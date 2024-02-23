@@ -1,28 +1,26 @@
 use macroquad::prelude::*;
 
+struct MainState {
+    ball: Rect,
+    ball_vel: Vec2,
+}
+
 #[macroquad::main("InputKeys")]
 async fn main() {
-    let mut x = screen_width() / 2.0;
-    let mut y = screen_height() / 2.0;
+    let mut state = MainState {
+        ball: Rect::new(screen_width() / 2.0, screen_height() / 2.0, 10.0, 10.0),
+        ball_vel: Vec2::new(1.0, 2.0),
+    };
 
     loop {
-        clear_background(LIGHTGRAY);
+        clear_background(BLACK);
 
-        if is_key_down(KeyCode::Right) {
-            x += 1.0;
-        }
-        if is_key_down(KeyCode::Left) {
-            x -= 1.0;
-        }
-        if is_key_down(KeyCode::Down) {
-            y += 1.0;
-        }
-        if is_key_down(KeyCode::Up) {
-            y -= 1.0;
-        }
+        state.ball.move_to(Vec2::new(
+                state.ball.x + state.ball_vel.x,
+                state.ball.y + state.ball_vel.y,
+        ));
 
-        draw_circle(x, y, 15.0, YELLOW);
-        draw_text("move the ball with arrow keys", 20.0, 100.0, 40.0, BLACK);
+        draw_rectangle(state.ball.x, state.ball.y, state.ball.w, state.ball.h, WHITE);
         next_frame().await
     }
 }
