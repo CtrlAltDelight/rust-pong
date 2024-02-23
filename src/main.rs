@@ -7,6 +7,13 @@ struct MainState {
 
     top_paddle: Rect,
     bottom_paddle: Rect,
+
+    top_player_score: i32,
+    bottom_player_score: i32,
+}
+
+fn _draw_rect_object(rect: Rect) {
+    draw_rectangle(rect.x, rect.y, rect.w, rect.h, WHITE);
 }
 
 impl MainState {
@@ -38,11 +45,31 @@ impl MainState {
 
             self.ball_vel.y *= -1.0;
         }
-    }
-}
 
-fn _draw_rect_object(rect: Rect) {
-    draw_rectangle(rect.x, rect.y, rect.w, rect.h, WHITE);
+        // Bounce ball off sides of screen
+        if self.ball.right() >= screen_width() && self.ball_vel.x > 0.0 ||
+           self.ball.left()  <= 0.0            && self.ball_vel.x < 0.0 {
+               self.ball_vel.x *= -1.0;
+        }
+
+        // Scoring
+        if self.ball.bottom() >= screen_height() && self.ball_vel.y < 0.0 {
+            self.top_player_score += 1;
+        }
+        if self.ball.top() <= 0.0 && self.ball_vel.y > 0.0 {
+            self.bottom_player_score += 1;
+        }
+    }
+
+
+    fn draw(&mut self) {
+        _draw_rect_object(self.ball);
+        _draw_rect_object(self.top_paddle);
+        _draw_rect_object(self.bottom_paddle);
+
+        draw_text(&self.top_player_score.to_string(), 20.0, 30.0, 40.0, WHITE);
+        draw_text(&self.bottom_player_score.to_string(), 20.0, screen_height() - 30.0, 40.0, WHITE);
+    }
 }
 
 #[macroquad::main("InputKeys")]
@@ -52,16 +79,16 @@ async fn main() {
         ball_vel: Vec2::new(1.0, 2.0),
         top_paddle: Rect::new(screen_width() / 2.0, 20.0, 100.0, 5.0),
         bottom_paddle: Rect::new(screen_width() / 2.0, screen_height() - 20.0, 100.0, 5.0),
+        top_player_score: 0,
+        bottom_player_score: 0,
     };
 
     loop {
         clear_background(BLACK);
 
         state.update();
+        state.draw();
 
-        _draw_rect_object(state.ball);
-        _draw_rect_object(state.top_paddle);
-        _draw_rect_object(state.bottom_paddle);
         next_frame().await
     }
 }
