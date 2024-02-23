@@ -12,12 +12,8 @@ struct MainState {
     bottom_player_score: i32,
 }
 
-fn _draw_rect_object(rect: Rect) {
-    draw_rectangle(rect.x, rect.y, rect.w, rect.h, WHITE);
-}
-
 impl MainState {
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         // Ball movement
         self.ball.move_to(Vec2::new(
                 self.ball.x + self.ball_vel.x,
@@ -61,11 +57,15 @@ impl MainState {
         }
     }
 
+    fn draw_rect_object(&mut self, rect: Rect) {
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, WHITE);
+    }
 
-    fn draw(&mut self) {
-        _draw_rect_object(self.ball);
-        _draw_rect_object(self.top_paddle);
-        _draw_rect_object(self.bottom_paddle);
+
+    pub fn draw(&mut self) {
+        self.draw_rect_object(self.ball);
+        self.draw_rect_object(self.top_paddle);
+        self.draw_rect_object(self.bottom_paddle);
 
         draw_text(&self.top_player_score.to_string(), 20.0, 30.0, 40.0, WHITE);
         draw_text(&self.bottom_player_score.to_string(), 20.0, screen_height() - 30.0, 40.0, WHITE);
