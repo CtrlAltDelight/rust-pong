@@ -26,16 +26,16 @@ impl MainState {
 
         // Controlling paddles
         const PADDLE_SPEED: f32 = 5.0;
-        if is_key_down(KeyCode::Left) {
+        if is_key_down(KeyCode::Left) && self.top_paddle.left() > 0.0 {
             self.top_paddle.x -= PADDLE_SPEED;
         }
-        if is_key_down(KeyCode::Right) {
+        if is_key_down(KeyCode::Right) && self.top_paddle.right() < screen_width() {
             self.top_paddle.x += PADDLE_SPEED;
         }
-        if is_key_down(KeyCode::A) {
+        if is_key_down(KeyCode::A) && self.bottom_paddle.left() > 0.0 {
             self.bottom_paddle.x -= PADDLE_SPEED;
         }
-        if is_key_down(KeyCode::D) {
+        if is_key_down(KeyCode::D) && self.bottom_paddle.right() < screen_width() {
             self.bottom_paddle.x += PADDLE_SPEED;
         }
 
