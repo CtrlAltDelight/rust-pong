@@ -11,11 +11,13 @@ struct MainState {
 
 impl MainState {
     fn update(&mut self) {
+        // Ball movement
         self.ball.move_to(Vec2::new(
                 self.ball.x + self.ball_vel.x,
                 self.ball.y + self.ball_vel.y,
         ));
 
+        // Controlling paddles
         const PADDLE_SPEED: f32 = 5.0;
         if is_key_down(KeyCode::Left) {
             self.top_paddle.x -= PADDLE_SPEED;
@@ -29,7 +31,18 @@ impl MainState {
         if is_key_down(KeyCode::D) {
             self.bottom_paddle.x += PADDLE_SPEED;
         }
+
+        // Ball bounce off paddles
+        if self.ball.overlaps(&self.top_paddle) && self.ball_vel.y < 0.0 ||
+           self.ball.overlaps(&self.bottom_paddle) && self.ball_vel.y > 0.0 {
+
+            self.ball_vel.y *= -1.0;
+        }
     }
+}
+
+fn _draw_rect_object(rect: Rect) {
+    draw_rectangle(rect.x, rect.y, rect.w, rect.h, WHITE);
 }
 
 #[macroquad::main("InputKeys")]
@@ -46,9 +59,9 @@ async fn main() {
 
         state.update();
 
-        draw_rectangle(state.ball.x, state.ball.y, state.ball.w, state.ball.h, WHITE);
-        draw_rectangle(state.top_paddle.x, state.top_paddle.y, state.top_paddle.w, state.top_paddle.h, WHITE);
-        draw_rectangle(state.bottom_paddle.x, state.bottom_paddle.y, state.bottom_paddle.w, state.bottom_paddle.h, WHITE);
+        _draw_rect_object(state.ball);
+        _draw_rect_object(state.top_paddle);
+        _draw_rect_object(state.bottom_paddle);
         next_frame().await
     }
 }
