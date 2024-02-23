@@ -13,6 +13,11 @@ struct MainState {
 }
 
 impl MainState {
+    fn reset_ball(&mut self) {
+        self.ball = Rect::new(screen_width() / 2.0, screen_height() / 2.0, 10.0, 10.0);
+        self.ball_vel = Vec2::new(1.0, 2.0);
+    }
+
     pub fn update(&mut self) {
         // Ball movement
         self.ball.move_to(Vec2::new(
@@ -51,9 +56,11 @@ impl MainState {
         // Scoring
         if self.ball.bottom() >= screen_height() && self.ball_vel.y > 0.0 {
             self.top_player_score += 1;
+            self.reset_ball()
         }
         if self.ball.top() <= 0.0 && self.ball_vel.y < 0.0 {
             self.bottom_player_score += 1;
+            self.reset_ball()
         }
     }
 
