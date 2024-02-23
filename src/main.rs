@@ -53,10 +53,10 @@ impl MainState {
         }
 
         // Scoring
-        if self.ball.bottom() >= screen_height() && self.ball_vel.y < 0.0 {
+        if self.ball.bottom() >= screen_height() && self.ball_vel.y > 0.0 {
             self.top_player_score += 1;
         }
-        if self.ball.top() <= 0.0 && self.ball_vel.y > 0.0 {
+        if self.ball.top() <= 0.0 && self.ball_vel.y < 0.0 {
             self.bottom_player_score += 1;
         }
     }
