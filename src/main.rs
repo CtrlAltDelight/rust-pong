@@ -136,7 +136,15 @@ fn start_listening_thread(socket: UdpSocket, tx: Sender<PaddleCommand>) {
     });
 }
 
-#[macroquad::main("InputKeys")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Pong".to_owned(),
+        window_resizable: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
 
     /*
