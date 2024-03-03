@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+use std::fmt::format;
 use std::io::ErrorKind;
 use std::net::UdpSocket;
 use std::net::{TcpListener, TcpStream};
@@ -20,6 +21,7 @@ struct MainState {
 
     socket: UdpSocket,
     peer_addr: String,
+    tcp_stream: Option<TcpStream>,
 }
 
 
@@ -144,29 +146,120 @@ fn window_conf() -> Conf {
     }
 }
 
-async fn start_screen(ip_addr: &mut String) {
+async fn wait_for_key_release(key: KeyCode) {
+    while is_key_down(key) {
+        next_frame().await;
+    }
+}
 
+async fn ip_input_screen(ip_addr: &mut String) {
     loop {
         clear_background(BLACK);
 
-        let printable_chars = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ':'];
+        let allowed_chars = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ':'];
         if let Some(key) = get_char_pressed() {
-            println!("Key pressed: {}", key);
             if is_key_pressed(KeyCode::Enter) {
+                waiting_to_join_screen(ip_addr).await;
                 return;
             }
             else if is_key_pressed(KeyCode::Backspace) {
                 ip_addr.pop();
             }
-            else if printable_chars.contains(&key) {
+            else if allowed_chars.contains(&key) {
                 ip_addr.push(key);
             }
         }
 
-        draw_text("Enter the IP address of the opponent:", 20.0, 20.0, 40.0, WHITE);
-        draw_text(&ip_addr, 20.0, 60.0, 40.0, WHITE);
+        draw_text("Enter the IP address of the opponent:", 40.0, 40.0, 40.0, WHITE);
+        draw_text(&ip_addr, 40.0, 80.0, 40.0, WHITE);
         next_frame().await;
     }
+}
+
+const COUNTDOWN_DELAY: f64 = 1.0;
+async fn countdown() {
+    for time in (0..3).rev() {
+        clear_background(BLACK);
+        draw_text(&time.to_string(), screen_width() / 2.0, screen_height() / 2.0, 100.0, WHITE);
+        thread::sleep(std::time::Duration::from_secs_f64(COUNTDOWN_DELAY));
+        next_frame().await;
+    }
+}
+
+async fn waiting_for_opponent_screen() {
+    const LOADING_TEXT: &str = "Waiting for opponent";
+    const ONE_CHAR_WIDTH: f32 = 10.0;
+    loop {
+        for i in 0..4 {
+            clear_background(BLACK);
+            let text_to_draw = format!("{}{}", LOADING_TEXT, ".".repeat(i));
+            draw_text(&text_to_draw, screen_width()/ 2.0 - ONE_CHAR_WIDTH * text_to_draw.chars().count() as f32, screen_height() / 2.0, 40.0, WHITE);
+            next_frame().await;
+            thread::sleep(std::time::Duration::from_secs_f64(COUNTDOWN_DELAY));
+        }
+    }
+}
+
+async fn waiting_to_join_screen(ip_addr: &str) {
+    let mut loading_text: &str = "Connecting to server...";
+    clear_background(BLACK);
+    let text_to_draw = format!("{}{}", loading_text, ".".repeat(3));
+    draw_text(&text_to_draw, screen_width() / 2.0 - ONE_CHAR_WIDTH * text_to_draw.chars().count() as f32, screen_height() / 2.0, 40.0, WHITE);
+    let mut stream = TcpStream::connect(ip_addr).expect("Couldn't connect to server.");
+    println!("Connected to server.");
+
+    const ONE_CHAR_WIDTH: f32 = 10.0;
+    loop {
+        for i in 0..4 {
+            clear_background(BLACK);
+            let text_to_draw = format!("{}{}", loading_text, ".".repeat(i));
+            draw_text(&text_to_draw, screen_width()/ 2.0 - ONE_CHAR_WIDTH * text_to_draw.chars().count() as f32, screen_height() / 2.0, 40.0, WHITE);
+            next_frame().await;
+            thread::sleep(std::time::Duration::from_secs_f64(COUNTDOWN_DELAY));
+        }
+    }
+}
+
+async fn main_menu(ip_addr: &mut String) {
+    #[derive(PartialEq)]
+    enum MenuOption { Host, Join }
+    let mut selected_option: MenuOption = MenuOption::Host;
+    loop {
+        clear_background(BLACK);
+        draw_text("Pong", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 100.0, WHITE);
+        let host_text = if selected_option == MenuOption::Host { "-> Host" } else { "Host" };
+        let join_text = if selected_option == MenuOption::Join { "-> Join" } else { "Join" };
+        draw_text(host_text, screen_width() / 2.0 - 100.0, screen_height() / 2.0 + 100.0, 40.0, WHITE);
+        draw_text(join_text, screen_width() / 2.0 - 100.0, screen_height() / 2.0 + 140.0, 40.0, WHITE);
+        next_frame().await;
+        if is_key_pressed(KeyCode::Enter) {
+            wait_for_key_release(KeyCode::Enter).await;
+            match selected_option {
+                MenuOption::Host => return,
+                MenuOption::Join => {
+                    ip_input_screen(ip_addr).await;
+                    return;
+                }
+            }
+        }
+        if is_key_pressed(KeyCode::Up) {
+            selected_option = MenuOption::Host;
+        }
+        if is_key_pressed(KeyCode::Down) {
+            selected_option = MenuOption::Join;
+        }
+    }
+}
+
+fn handle_client(mut stream: TcpStream) {
+    // Send ack to client
+    if let Err(e) = stream.write_all(b"ack") {
+        eprintln!("Error sending ack to client: {}", e);
+        return;
+    }
+
+    // Proceed to start game
+    println!("Game started with client: {}", stream.peer_addr().unwrap());
 }
 
 #[macroquad::main(window_conf)]
@@ -184,8 +277,9 @@ async fn main() {
     }
     */
 
-    let own_ip = "192.168.1.100:7878";
-    //let peer_ip = "192.168.1.16:7878";
+
+    const port: i32 = 4595;
+    let own_ip = format!("127.0.0.1:{}", port);
 
     // Get the IP address of the opponent
     let mut state = MainState {
@@ -195,18 +289,72 @@ async fn main() {
         bottom_paddle: Rect::new(screen_width() / 2.0, screen_height() - 20.0, 100.0, 5.0),
         top_player_score: 0,
         bottom_player_score: 0,
-        socket: UdpSocket::bind(own_ip).expect("Couldn't bind udp socket."),
+        socket: UdpSocket::bind(own_ip.clone()).expect("Couldn't bind udp socket."),
         peer_addr: "".to_string(),
+        tcp_stream: None,
     };
-    start_screen(&mut state.peer_addr).await;
+
+    let mut connected = false;
+    main_menu(&mut state.peer_addr).await;
+    if state.peer_addr.is_empty() { // hosting
+        clear_background(BLACK);
+        draw_text("Setting up server.", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 40.0, WHITE);
+        next_frame().await;
+        let listener = TcpListener::bind(own_ip);
+        println!("Server listening on port {}", port);
+        clear_background(BLACK);
+        draw_text("Waiting for opponent to connect.", screen_width() / 2.0 - 275.0, screen_height() / 2.0, 40.0, WHITE);
+        next_frame().await;
+        if let Ok((stream, addr)) = listener.expect("Listener is not working!").accept() {
+            println!("Client connected from {}", addr);
+            state.peer_addr = addr.to_string();
+            handle_client(stream);
+        }
+        else {
+            println!("Couldn't accept client connection.");
+            return;
+        }
+    }
+    else { // joining
+        while !connected {
+            match TcpStream::connect(state.peer_addr.clone()) {
+                Ok(s) => {
+                    println!("Connected to server on {}", state.peer_addr);
+                    state.tcp_stream = Some(s);
+                    connected = true;
+                },
+                Err(_e) => {
+                    clear_background(BLACK);
+                    draw_text("Couldn't connect to server: {}.\n Retrying...", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 40.0, WHITE);
+                    next_frame().await;
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    continue;
+                },
+            }
+        }
+        clear_background(BLACK);
+        draw_text("Connected to server: {}.", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 40.0, WHITE);
+        next_frame().await;
+        let mut buffer = [0; 3];
+        state.tcp_stream.as_ref().expect("tcp_stream is None!!!").read_exact(&mut buffer);
+        if &buffer == b"ack" {
+            println!("Received ack from server.");
+        }
+        else {
+            println!("Received unexpected response from server: {:?}", buffer);
+            return;
+        }
+    }
+    clear_background(BLACK);
+    draw_text("Starting game!", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 40.0, WHITE);
+    next_frame().await;
     state.socket.set_nonblocking(true).expect("Couldn't set non-blocking mode.");
     let socket_clone = state.socket.try_clone().expect("Couldn't clone socket.");
-
 
     // Handle incoming data from opponent
     let (tx, rx): (Sender<PaddleCommand>, Receiver<PaddleCommand>) = mpsc::channel();
     start_listening_thread(socket_clone, tx);
-
+    countdown().await;
 
     const TARGET_FRAME_TIME: f64 = 1.0 / 60.0;
     let mut last_frame_time = get_time();
@@ -233,7 +381,6 @@ async fn main() {
                 PaddleCommand::Stop  => (),
             }
         }
-
         next_frame().await
     }
 }
