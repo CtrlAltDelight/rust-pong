@@ -19,7 +19,7 @@ struct MainState {
     bottom_player_score: i32,
 
     socket: UdpSocket,
-    peer_addr: &'static str
+    peer_addr: String,
 }
 
 
@@ -144,6 +144,31 @@ fn window_conf() -> Conf {
     }
 }
 
+async fn start_screen(ip_addr: &mut String) {
+
+    loop {
+        clear_background(BLACK);
+
+        let printable_chars = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ':'];
+        if let Some(key) = get_char_pressed() {
+            println!("Key pressed: {}", key);
+            if is_key_pressed(KeyCode::Enter) {
+                return;
+            }
+            else if is_key_pressed(KeyCode::Backspace) {
+                ip_addr.pop();
+            }
+            else if printable_chars.contains(&key) {
+                ip_addr.push(key);
+            }
+        }
+
+        draw_text("Enter the IP address of the opponent:", 20.0, 20.0, 40.0, WHITE);
+        draw_text(&ip_addr, 20.0, 60.0, 40.0, WHITE);
+        next_frame().await;
+    }
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
 
@@ -160,7 +185,9 @@ async fn main() {
     */
 
     let own_ip = "192.168.1.100:7878";
-    let peer_ip = "192.168.1.16:7878";
+    //let peer_ip = "192.168.1.16:7878";
+
+    // Get the IP address of the opponent
     let mut state = MainState {
         ball: Rect::new(screen_width() / 2.0, screen_height() / 2.0, 10.0, 10.0),
         ball_vel: Vec2::new(1.0, 2.0),
@@ -169,14 +196,17 @@ async fn main() {
         top_player_score: 0,
         bottom_player_score: 0,
         socket: UdpSocket::bind(own_ip).expect("Couldn't bind udp socket."),
-        peer_addr: peer_ip,
+        peer_addr: "".to_string(),
     };
+    start_screen(&mut state.peer_addr).await;
     state.socket.set_nonblocking(true).expect("Couldn't set non-blocking mode.");
     let socket_clone = state.socket.try_clone().expect("Couldn't clone socket.");
+
 
     // Handle incoming data from opponent
     let (tx, rx): (Sender<PaddleCommand>, Receiver<PaddleCommand>) = mpsc::channel();
     start_listening_thread(socket_clone, tx);
+
 
     const TARGET_FRAME_TIME: f64 = 1.0 / 60.0;
     let mut last_frame_time = get_time();
