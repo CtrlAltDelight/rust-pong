@@ -159,7 +159,7 @@ async fn ip_input_screen(ip_addr: &mut String) {
         let allowed_chars = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ':'];
         if let Some(key) = get_char_pressed() {
             if is_key_pressed(KeyCode::Enter) {
-                waiting_to_join_screen(ip_addr).await;
+                //waiting_to_join_screen(ip_addr).await;
                 return;
             }
             else if is_key_pressed(KeyCode::Backspace) {
@@ -278,8 +278,8 @@ async fn main() {
     */
 
 
-    const port: i32 = 4595;
-    let own_ip = format!("127.0.0.1:{}", port);
+    const port: i32 = 41352;
+    let own_ip = format!("192.168.1.100:{}", port);
 
     // Get the IP address of the opponent
     let mut state = MainState {
