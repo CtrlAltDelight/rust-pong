@@ -251,7 +251,12 @@ async fn main_menu(ip_addr: &mut String) {
     }
 }
 
-fn handle_client(mut stream: TcpStream) {
+fn handle_client(mut stream: TcpStream, state: &mut MainState) {
+    // Receive ip:port of the client
+    let mut buffer = [0; 100];
+    let amt = stream.read(&mut buffer).expect("Couldn't read from stream.");
+    state.peer_addr = str::from_utf8(&buffer[..amt]).expect("Invalid UTF-8 sequence.").to_string();
+
     // Send ack to client
     if let Err(e) = stream.write_all(b"ack") {
         eprintln!("Error sending ack to client: {}", e);
@@ -308,7 +313,7 @@ async fn main() {
         if let Ok((stream, addr)) = listener.expect("Listener is not working!").accept() {
             println!("Client connected from {}", addr);
             state.peer_addr = addr.to_string();
-            handle_client(stream);
+            handle_client(stream, &mut state);
         }
         else {
             println!("Couldn't accept client connection.");
@@ -336,7 +341,8 @@ async fn main() {
         draw_text("Connected to server: {}.", screen_width() / 2.0 - 100.0, screen_height() / 2.0, 40.0, WHITE);
         next_frame().await;
         let mut buffer = [0; 3];
-        state.tcp_stream.as_ref().expect("tcp_stream is None!!!").read_exact(&mut buffer);
+        state.socket.send_to(own_ip.as_bytes(), &state.peer_addr).expect("Couldn't send ip:port to server!");
+        let _ = state.tcp_stream.as_ref().expect("tcp_stream is None!!!").read_exact(&mut buffer);
         if &buffer == b"ack" {
             println!("Received ack from server.");
         }
